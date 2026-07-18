@@ -1,0 +1,86 @@
+name: Build & Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '.gitignore'
+      - '.dockerignore'
+      - '.screenshots/**'
+      - '.README.md'
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{steps.filter.outputs.frontend }}
+      backend: ${{steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
+  deploy:
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to DockerHub
+        if: needs.changes.outputs.frontend == 'true' || needs.changes.outputs.backend == 'true'
+        uses: docker/login-action@v3
+        with:
+          username: ${{secrets.DOCKERHUB_USERNAME}}
+          password: ${{secrets.DOCKERHUB_TOKEN}}
+
+      - name: Build and Push frontend image
+        if: needs.changes.outputs.frontend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/frontend:latest
+
+      - name: Build and Push backend image
+        if: needs.changes.outputs.backend == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          push: true
+          tags: ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
+
+      - name: Deploy to backend files EC2
+        if: needs.changes.outputs.backend == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{secrets.EC2_HOST }}
+          username: ${{secrets.EC2_USER}}
+          key: ${{secrets.EC2_SSH_KEY}}
+          script: |
+            docker pull ${{secrets.DOCKERHUB_USERNAME}}/backend:latest
+            cd cicd-branching-demo
+            docker compose up -d backend
+
+      - name: Deploy to frontend EC2
+        if: needs.changes.outputs.frontend == 'true'
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{secrets.EC2_HOST }}
+          username: ${{secrets.EC2_USER}}
+          key: ${{secrets.EC2_SSH_KEY}}
+          script: |
+            docker pull ${{secrets.DOCKERHUB_USERNAME}}/frontend:latest
+            cd cicd-branching-demo
+            docker compose up -d frontend
+
+      - name: Health check
+        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' 
+        run: curl -f http://${{ secrets.EC2_HOST }}/api/status

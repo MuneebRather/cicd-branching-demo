@@ -1,0 +1,71 @@
+name: Pull request validation
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'README.md'
+      - 'screenshots/**'
+      - '.gitignore'
+      - '.dockerignore'
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            frontend:
+              - 'frontend/**'
+            backend:
+              - 'backend/**'
+
+  build:
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        if: needs.changes.outputs.backend == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build backend image
+        if:  needs.changes.outputs.backend == 'true'
+        run: docker build ./backend
+
+      - name: Lint backend (flake8)
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          pip install flake8
+          flake8 backend/app.py
+
+      - name: Run backend unit test
+        if: needs.changes.outputs.backend == 'true'
+        run: |
+          pip install pytest
+          pytest backend/
+
+      
+      - name: Set up Node.js
+        if:  needs.changes.outputs.frontend == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend image
+        if:  needs.changes.outputs.frontend == 'true'
+        run: docker build ./frontend
+
+      - name: Lint frontend (syntax check)
+        if: needs.changes.outputs.frontend == 'true'
+        run: node --check frontend/script.js

@@ -5,6 +5,7 @@ app = Flask(__name__)
 
 visit_count = 0
 
+
 @app.route('/api/status')
 def status():
     global visit_count
@@ -15,9 +16,11 @@ def status():
         "visits": visit_count
     })
 
+
 @app.route('/health')
 def health():
     return jsonify({"status": "ok"}), 200
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)

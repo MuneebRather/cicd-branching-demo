@@ -1,6 +1,6 @@
 services:
   backend:
-    build: ./backend
+    image: muneebrather/backend:latest
     container_name: cicd-backend
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
@@ -13,7 +13,7 @@ services:
     cpus: "0.5"
 
   frontend:
-    build: ./frontend
+    build: muneebrather/frontend:latest
     container_name: cicd-frontend
     ports:
       - "80:80"

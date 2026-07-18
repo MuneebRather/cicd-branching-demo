@@ -13,7 +13,7 @@ services:
     cpus: "0.5"
 
   frontend:
-    build: muneebrather/frontend:latest
+    image: muneebrather/frontend:latest
     container_name: cicd-frontend
     ports:
       - "80:80"

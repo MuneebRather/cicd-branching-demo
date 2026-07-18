@@ -3,11 +3,6 @@ on:
   pull_request:
     branches:
       - main
-    paths-ignore:
-      - 'README.md'
-      - 'screenshots/**'
-      - '.gitignore'
-      - '.dockerignore'
 
 jobs:
   changes:

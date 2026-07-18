@@ -82,5 +82,11 @@ jobs:
             docker compose up -d frontend
 
       - name: Health check
-        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true' 
-        run: curl -f http://${{ secrets.EC2_HOST }}/api/status
+        if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.frontend == 'true'
+        run: |
+          for i in {1..5}; do
+            curl -f http://${{ secrets.EC2_HOST }}/api/status && exit 0
+            echo "Not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          exit 1
